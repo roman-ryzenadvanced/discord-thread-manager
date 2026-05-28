@@ -1,29 +1,26 @@
-# Environment
-.env
-*.env.local
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
-build/
-*.egg
-
-# Output files
+# Scan results
 stale_threads.json
 stale_report.md
 stale_report.json
-lock_results_*.json
-verification_scan.json
+*_results.json
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets — NEVER commit tokens
+*.token

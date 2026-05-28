@@ -1,143 +1,107 @@
 #!/usr/bin/env python3
 """
-Generate a human-readable report from stale thread scan data.
+Generate a report from stale thread scan data.
 
-Supports markdown and JSON output formats. Can auto-categorize threads
-by issue type using keyword matching.
+Works with output from scan_threads.py (the hacky version).
+Supports markdown and JSON formats.
 
 Usage:
-    python generate_report.py --input stale_threads.json --format markdown
-    python generate_report.py --input stale_threads.json --format markdown --categorize --output report.md
+    python generate_report.py --input stale_threads.json
+    python generate_report.py --input stale_threads.json --categorize --output report.md
 """
 
 import argparse
-import sys
+import json
 from datetime import datetime
-from pathlib import Path
-
-from utils import load_json, log
-
+from utils import load_json
 
 def generate_markdown_report(scan_data: dict, categorize: bool = True) -> str:
-    """Generate a markdown report from scan data."""
     meta = scan_data["scan_metadata"]
-    stale_threads = scan_data["stale_threads"]
-
+    stale = scan_data.get("stale_threads", [])
     lines = []
 
-    # Header
-    lines.append(f"# Stale Threads Report — Channel {meta['channel_id']}")
+    lines.append(f"# 🕵️ Stale Threads Report — The Hacky Way")
     lines.append(f"")
     lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append(f"Auth: User token (extracted via CDP — no bot needed)")
     lines.append(f"")
 
-    # Key Findings
     lines.append(f"## Key Findings")
     lines.append(f"")
     lines.append(f"| Metric | Count |")
     lines.append(f"|--------|-------|")
-    lines.append(f"| Total threads scanned | {meta['total_threads_scanned']} |")
-    lines.append(f"| Total stale ({meta['min_inactive_days']}+ days inactive) | {meta['total_stale']} |")
-    lines.append(f"| Never responded (0-1 msgs) | {meta['never_responded']} |")
-
-    locked_count = sum(1 for t in stale_threads if t.get("is_locked"))
-    if locked_count:
-        lines.append(f"| Already locked | {locked_count} |")
+    lines.append(f"| Total scanned | {meta.get('total_threads_scanned', 0)} |")
+    lines.append(f"| Stale ({meta.get('min_inactive_days', '?')}+ days) | {meta.get('total_stale', 0)} |")
     lines.append(f"")
 
-    # Age Breakdown
-    lines.append(f"## Age Breakdown")
-    lines.append(f"")
-    lines.append(f"| Range | Count |")
-    lines.append(f"|-------|-------|")
-    for bucket in ["30-60 days", "60-90 days", "90-180 days", "180+ days"]:
-        count = meta.get("age_distribution", {}).get(bucket, 0)
-        if count:
-            lines.append(f"| {bucket} | {count} |")
-    lines.append(f"")
+    # Age
+    age_dist = {}
+    for t in stale:
+        b = t.get("age_bucket", "unknown")
+        age_dist[b] = age_dist.get(b, 0) + 1
+    if age_dist:
+        lines.append(f"## Age Breakdown")
+        lines.append(f"")
+        lines.append(f"| Range | Count |")
+        lines.append(f"|-------|-------|")
+        for bucket in ["30-60 days", "60-90 days", "90-180 days", "180+ days"]:
+            if bucket in age_dist:
+                lines.append(f"| {bucket} | {age_dist[bucket]} |")
+        lines.append(f"")
 
-    # Category Breakdown
-    if categorize and meta.get("category_distribution"):
+    # Category
+    cat_dist = {}
+    for t in stale:
+        c = t.get("category", "unknown")
+        cat_dist[c] = cat_dist.get(c, 0) + 1
+    if categorize and cat_dist:
         lines.append(f"## Issue Categories")
         lines.append(f"")
         lines.append(f"| Category | Count |")
         lines.append(f"|----------|-------|")
-        for cat, count in sorted(meta["category_distribution"].items(), key=lambda x: -x[1]):
+        for cat, count in sorted(cat_dist.items(), key=lambda x: -x[1]):
             lines.append(f"| {cat} | {count} |")
         lines.append(f"")
 
-    # Thread Details
+    # Thread list
     lines.append(f"## Stale Thread Details")
     lines.append(f"")
-
-    # Sort by days inactive (oldest first)
-    sorted_threads = sorted(stale_threads, key=lambda t: -t.get("days_inactive", 0))
-
-    for i, thread in enumerate(sorted_threads, 1):
+    for i, thread in enumerate(sorted(stale, key=lambda t: -t.get("days_inactive", 0)), 1):
         lines.append(f"### {i}. {thread.get('name', 'Untitled')}")
         lines.append(f"")
-        lines.append(f"- **Thread ID**: {thread['id']}")
-        lines.append(f"- **Days Inactive**: {thread.get('days_inactive', 'N/A')}")
-        lines.append(f"- **Age Bucket**: {thread.get('age_bucket', 'N/A')}")
-        lines.append(f"- **Message Count**: {thread.get('message_count', 'N/A')}")
+        lines.append(f"- **ID**: `{thread['id']}`")
+        lines.append(f"- **Inactive**: {thread.get('days_inactive', '?')} days")
+        lines.append(f"- **Messages**: {thread.get('message_count', 0)}")
         lines.append(f"- **Category**: {thread.get('category', 'N/A')}")
-        lines.append(f"- **Archived**: {'Yes' if thread.get('is_archived') else 'No'}")
-        lines.append(f"- **Locked**: {'Yes' if thread.get('is_locked') else 'No'}")
-        lines.append(f"- **Source**: {thread.get('source', 'N/A')}")
-        if thread.get("owner_id"):
-            lines.append(f"- **Owner ID**: {thread['owner_id']}")
-        if thread.get("parent_id"):
-            lines.append(f"- **Parent ID**: {thread['parent_id']}")
+        lines.append(f"- **Archived**: {'✓' if thread.get('is_archived') else '✗'}")
+        lines.append(f"- **Locked**: {'✓' if thread.get('is_locked') else '✗'}")
         lines.append(f"")
 
     return "\n".join(lines)
 
 
-def generate_json_report(scan_data: dict) -> dict:
-    """Generate a structured JSON report from scan data."""
-    return {
-        "report_metadata": {
-            "generated_at": datetime.utcnow().isoformat() + "Z",
-            "channel_id": scan_data["scan_metadata"]["channel_id"],
-        },
-        "summary": scan_data["scan_metadata"],
-        "stale_threads": scan_data["stale_threads"],
-    }
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Generate report from stale thread scan data")
-    parser.add_argument("--input", required=True, help="Path to scan JSON file")
-    parser.add_argument("--format", choices=["markdown", "json"], default="markdown",
-                        help="Output format (default: markdown)")
-    parser.add_argument("--output", default=None,
-                        help="Output file path (default: stale_report.md or stale_report.json)")
-    parser.add_argument("--categorize", action="store_true",
-                        help="Include auto-categorization by issue type")
+    parser = argparse.ArgumentParser(description="Generate report from hacky scan data")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--categorize", action="store_true")
 
     args = parser.parse_args()
-
-    scan_data = load_json(args.input)
-
-    if args.format == "markdown":
-        report = generate_markdown_report(scan_data, categorize=args.categorize)
-        default_output = "stale_report.md"
-    else:
-        report = generate_json_report(scan_data)
-        default_output = "stale_report.json"
-
-    output_path = args.output or default_output
+    data = load_json(args.input)
 
     if args.format == "markdown":
-        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
+        report = generate_markdown_report(data, categorize=args.categorize)
+        out = args.output or "stale_report.md"
+        with open(out, "w") as f:
             f.write(report)
     else:
-        from utils import save_json
-        save_json(report, output_path)
+        report = {"summary": data["scan_metadata"], "stale_threads": data["stale_threads"]}
+        out = args.output or "stale_report.json"
+        with open(out, "w") as f:
+            json.dump(report, f, indent=2, default=str)
 
-    print(f"Report saved to: {output_path}")
-
+    print(f"Report saved to: {out}")
 
 if __name__ == "__main__":
     main()

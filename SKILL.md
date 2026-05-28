@@ -1,179 +1,220 @@
 ---
 name: discord-thread-manager
 description: >
-  Manage Discord server threads at scale — scan for stale/inactive threads, generate
-  detailed reports with categorization and age breakdowns, and bulk lock & archive
-  threads that have been inactive for a configurable period. Use this skill whenever
-  the user mentions Discord thread management, stale threads, channel cleanup, thread
-  moderation, bulk archiving Discord threads, Discord server maintenance, or wants to
-  audit and clean up thread clutter. Also triggers on requests about Discord API
-  thread operations, Discord moderation automation, or any task involving programmatically
-  managing Discord threads.
+  Manage Discord server threads — THE HACKY WAY. No bot token needed.
+  Launches Discord with Chrome DevTools Protocol (CDP), extracts your user
+  token from the live session via JavaScript injection, then uses the Discord
+  REST API to scan, report, and bulk lock/archive stale threads.
+  Works on Ubuntu Linux with Discord desktop installed.
+  Also supports CDP DOM manipulation and xdotool UI fallback for full control.
+  Use this skill for Discord thread management, stale thread cleanup,
+  channel moderation automation, or any Discord control task on Linux.
 ---
 
-# Discord Thread Manager
+# Discord Thread Manager — The Hacky Way 🔓
 
-This skill enables an AI agent to manage Discord threads programmatically via the
-Discord REST API. It covers the full lifecycle: **scan → report → act**.
+**No bot token. No Discord developer portal. No OAuth. No setup friction.**
 
-## Why this skill exists
+This skill controls Discord by reverse-engineering the running desktop app:
 
-Discord servers with high volumes of support or discussion threads accumulate stale,
-unanswered, and auto-archived threads over time. Manually reviewing and closing them
-is impractical at scale. This skill automates the entire process while being safe,
-auditable, and respectful of Discord's rate limits.
+1. **Launches Discord** with `--remote-debugging-port=9222` (Chrome DevTools Protocol)
+2. **Connects via WebSocket** to the live Discord renderer process
+3. **Extracts your token** from the running session via JavaScript injection into the renderer
+4. **Uses that token** to hit Discord REST API directly
+5. **CDP** for DOM manipulation, **xdotool** as a last-resort fallback for UI automation
+
+## Why This Exists
+
+The "proper" way to manage Discord threads requires creating a bot application,
+configuring permissions, inviting it to your server, and managing tokens.
+For personal server maintenance, that's overkill.
+
+This approach: just launch Discord, yank the token, and go.
+
+## ⚠️ Important Warnings
+
+- **User tokens** are technically against Discord's Terms of Service
+- This was built for **personal server management on Ubuntu Linux**
+- Use at your own risk
+- Don't use this for spam, harassment, or anything malicious
+- **Tested successfully with [Codex](https://rommark.dev/codex-launcher/) + custom AI models** (xiaomi mimo 2.5 pro, z.ai GLM 5.1)
 
 ## Prerequisites
 
-- A Discord token (bot token or user account token) with appropriate permissions
-- The `MANAGE_THREADS` permission is required to lock threads
-- The `READ_MESSAGE_HISTORY` permission is required to scan thread content
-- Python 3.9+ with `requests` installed
-
-## Environment Setup
-
-Set the following environment variables before using any script:
+- **Discord desktop app** installed on Ubuntu Linux
+- **Python 3.9+** with `requests` and `websocket-client` packages
+- **xdotool** (optional, for UI automation fallback)
+- **No bot token needed** — the skill extracts your user token automatically
 
 ```bash
-export DISCORD_TOKEN="your-token-here"       # Bot token or user account token
-export DISCORD_CHANNEL_ID="123456789"         # Target channel ID
+# Install dependencies
+pip install -r requirements.txt
+# Optional: xdotool for UI fallback
+sudo apt install xdotool
 ```
 
-Or copy `.env.example` to `.env` and fill in your values. All scripts read from
-`.env` automatically.
+## How It Works (Architecture)
+
+```
+┌──────────────────────────────────���──────────────────┐
+│                 Discord Desktop App                  │
+│              (--remote-debugging-port=9222)          │
+│                                                     │
+│  ┌─────────────┐    ┌────────────────────────────┐  │
+│  │  Renderer    │◄───│  CDP WebSocket (9222)      │  │
+│  │  Process     │    │                            │  │
+│  │              │    │  → JS Injection            │  │
+│  │  localStorage│    │  → Token Extraction        │  │
+│  │  webpack     │    │  → DOM Manipulation        │  │
+│  │  scripts     │    │  → Click, Type, Read       │  │
+│  └─────────────┘    └────────────────────────────┘  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+                         │
+                         │ Extracted user token
+                         ▼
+              ┌─────────────────────┐
+              │  Discord REST API   │
+              │  (api/v10)          │
+              │                     │
+              │  → List threads     │
+              │  → Lock threads     │
+              │  → Archive threads  │
+              │  → Send messages    │
+              └─────────────────────┘
+                         │
+                         │ If API fails
+                         ▼
+              ┌─────────────────────┐
+              │  xdotool fallback   │
+              │                     │
+              │  → Send keystrokes  │
+              │  → Click positions  │
+              │  → Window activate  │
+              └─────────────────────┘
+```
 
 ## Core Workflow
 
-The workflow has three phases. Always execute them in order: scan first, then report,
-then act. Never lock or archive threads without first generating a report the user
-can review.
+The workflow has three phases. Always execute in order.
 
-### Phase 1: Scan
+### Phase 1: Launch & Extract
 
-Use `scripts/scan_threads.py` to discover all threads in a channel, including both
-active and archived ones.
+```python
+from discord_controller import DiscordController
+
+ctrl = DiscordController()
+ctrl.full_startup()  # Launches Discord → connects CDP → extracts token
+```
+
+This single call:
+1. Checks if Discord is already running with CDP
+2. If not, launches Discord with `--remote-debugging-port=9222`
+3. Connects to the renderer via CDP WebSocket
+4. Extracts your user token (tries localStorage → script tags → webpack cache)
+5. Verifies the token by calling `/users/@me`
+
+### Phase 2: Scan
+
+```python
+result = ctrl.scan_threads(channel_id="123456789", min_inactive_days=30)
+```
+
+Discovers all threads (active + public archived + private archived) and identifies stale ones.
 
 ```bash
+# Or via CLI
 python scripts/scan_threads.py --channel-id 123456789 --min-inactive-days 30
 ```
 
-Key parameters:
-- `--channel-id` (required): The Discord channel ID to scan
-- `--min-inactive-days` (default: 30): Minimum days of inactivity to flag as stale
-- `--output` (default: `stale_threads.json`): Path for the JSON output
-
-The scanner handles Discord API quirks automatically:
-- Fetches both active and archived (public + private) threads
-- Correctly paginates using `before` cursors (see `references/discord_api.md`)
-- Handles the `+00:00` vs `Z` timezone issue in Discord timestamps
-- Respects rate limits with automatic retry on 429 responses
-
-Output is a JSON file with the full thread data, including:
-- Thread ID, name, creation date, last activity
-- Message count, whether it was ever responded to
-- Whether it's locked, archived, or auto-archived
-
-### Phase 2: Report
-
-Use `scripts/generate_report.py` to produce a human-readable report from the scan data.
+### Phase 3: Report
 
 ```bash
-python scripts/generate_report.py --input stale_threads.json --format markdown
-```
-
-Key parameters:
-- `--input` (required): Path to the JSON file from the scan phase
-- `--format` (default: `markdown`): Output format — `markdown` or `json`
-- `--output` (default: `stale_report.md`): Path for the report output
-- `--categorize` (flag): Attempt to categorize threads by issue type using keyword matching
-
-The report includes:
-- **Summary metrics**: total scanned, total stale, never-responded count
-- **Age breakdown**: threads bucketed by 30-60, 60-90, 90-180, 180+ days
-- **Issue categories**: auto-categorized by keywords (subscription, billing, bug, API, performance, etc.)
-- **Thread list**: full details for each stale thread
-
-Always present the report to the user and get explicit confirmation before proceeding
-to Phase 3. The user may want to exclude certain threads or adjust the criteria.
-
-### Phase 3: Act (Lock & Archive)
-
-Use `scripts/lock_archive_threads.py` to lock and archive the stale threads.
-
-```bash
-python scripts/lock_archive_threads.py --input stale_threads.json --dry-run
-python scripts/lock_archive_threads.py --input stale_threads.json --confirm
-```
-
-Key parameters:
-- `--input` (required): Path to the JSON file from the scan phase
-- `--dry-run` (flag): Show what would happen without actually doing it
-- `--confirm` (flag): Actually execute the lock & archive operations
-- `--exclude-ids` (optional): Comma-separated list of thread IDs to skip
-- `--batch-delay` (default: 1.0): Seconds between API calls to respect rate limits
-
-**Safety requirements:**
-1. ALWAYS run with `--dry-run` first and show the user what will happen
-2. Get explicit user confirmation (user must say "yes", "confirm", or "do it")
-3. Never run `--confirm` without the user's explicit go-ahead
-4. The script processes threads in batches and logs every action
-5. Failed operations are retried once; persistent failures are logged and reported
-
-**Important API quirks to know:**
-- Lock must be set BEFORE archiving for reliable behavior
-- The `locked` field appears inside `thread_metadata.locked`, not at the top level
-- Already-archived threads still need the lock operation applied separately
-- User account tokens may show `locked: None` at top level even when successfully locked — always check `thread_metadata.locked`
-- See `references/discord_api.md` for full details on these quirks
-
-## Scripts Reference
-
-| Script | Purpose | Key Flags |
-|--------|---------|-----------|
-| `scan_threads.py` | Discover and filter threads | `--channel-id`, `--min-inactive-days`, `--output` |
-| `generate_report.py` | Produce reports from scan data | `--input`, `--format`, `--categorize` |
-| `lock_archive_threads.py` | Lock & archive stale threads | `--input`, `--dry-run`, `--confirm`, `--exclude-ids` |
-| `utils.py` | Shared API helpers (not run directly) | — |
-
-## Common Patterns
-
-### Quick scan and report
-```bash
-python scripts/scan_threads.py --channel-id 123456789 --min-inactive-days 30
 python scripts/generate_report.py --input stale_threads.json --categorize
 ```
 
-### Full cleanup with review
+**Always show the report to the user and get confirmation before Phase 4.**
+
+### Phase 4: Act (Lock & Archive)
+
 ```bash
-# Step 1: Scan
-python scripts/scan_threads.py --channel-id 123456789 --min-inactive-days 30 --output my_scan.json
+# ALWAYS dry-run first
+python scripts/lock_archive_threads.py --input stale_threads.json --dry-run
 
-# Step 2: Report (review this before continuing!)
-python scripts/generate_report.py --input my_scan.json --categorize --output my_report.md
-
-# Step 3: Dry run (see what would happen)
-python scripts/lock_archive_threads.py --input my_scan.json --dry-run
-
-# Step 4: Confirm (after user approval)
-python scripts/lock_archive_threads.py --input my_scan.json --confirm
+# After user explicitly confirms
+python scripts/lock_archive_threads.py --input stale_threads.json --confirm
 ```
 
-### Exclude specific threads
-```bash
-python scripts/lock_archive_threads.py --input stale_threads.json --confirm \
-  --exclude-ids 111222333444,555666777888
+**Safety requirements:**
+1. ALWAYS run with `--dry-run` first
+2. Get explicit user confirmation ("yes", "confirm", or "do it")
+3. Never run `--confirm` without explicit go-ahead
+4. Lock before archive — order matters
+
+## Token Extraction Methods
+
+The controller tries three methods in order:
+
+### Method 1: localStorage
+```javascript
+localStorage.getItem('token')
 ```
 
-## Error Handling
+### Method 2: Script tag parsing
+```javascript
+document.querySelector('script').textContent.match(/"token"\s*:\s*"([^"]{30,})"/)
+```
 
-All scripts follow these error handling conventions:
-- **Rate limiting (429)**: Automatic retry with exponential backoff, respecting the `Retry-After` header
-- **Permission errors (403)**: Logged and reported; the script continues with remaining threads
-- **Not found (404)**: Thread was deleted; logged and skipped
-- **Network errors**: Retried up to 3 times with increasing delays
-- **Partial failures**: The script completes all possible operations and reports a summary of successes and failures at the end
+### Method 3: Webpack module cache
+```javascript
+// Searches webpackChunkdiscord_app for getToken() exports
+```
+
+## CDP DOM Operations
+
+Beyond the API, the controller can manipulate Discord's UI directly:
+
+```python
+ctrl.cdp.click_element('[aria-label="Thread Menu"]')
+ctrl.cdp.type_in_element('[contenteditable="true"]', "Closing this thread")
+ctrl.cdp.get_element_text('.thread-title')
+```
+
+## xdotool Fallback
+
+When CDP/DOM methods fail:
+
+```python
+ctrl.xdo.activate_discord()
+ctrl.xdo.send_keys("Hello!")
+ctrl.xdo.send_key("Return")
+ctrl.xdo.click_at(500, 300)
+```
+
+## Scripts Reference
+
+| Script | Purpose | Auth |
+|--------|---------|------|
+| `discord_controller.py` | Core CDP + API controller | Extracts token from session |
+| `scan_threads.py` | Discover and filter threads | Uses controller |
+| `generate_report.py` | Produce reports from scan data | No auth needed |
+| `lock_archive_threads.py` | Lock & archive stale threads | Uses controller |
+| `utils.py` | Analysis helpers | No auth needed |
+
+## Tested With
+
+This skill was **successfully tested** using:
+- **[Codex CLI](https://rommark.dev/codex-launcher/)** with custom AI models:
+  - **xiaomi mimo 2.5 pro** — [Free API, limited time, no credit card](https://rommark.dev/codex-launcher/)
+  - **z.ai GLM 5.1** — [10% OFF coding plan](https://rommark.dev/codex-launcher/)
+- **Ubuntu Linux** (primary dev/testing environment)
+
+Other AI coding tools (Claude Code, OpenCode, ZCode, Antigravity) are supported
+via the skill format but have **not been tested** by us. See `ai-tool-guides/` for setup instructions.
 
 ## Further Reading
 
-- `references/discord_api.md` — Discord API endpoints, authentication, pagination, and known quirks
-- `references/workflow_guide.md` — Detailed step-by-step guide with troubleshooting tips
+- `references/cdp_protocol.md` — CDP endpoints, authentication, token extraction details
+- `references/discord_api.md` — Discord API endpoints, pagination, quirks
+- `references/workflow_guide.md` — Step-by-step guide with troubleshooting
+- `ai-tool-guides/` — Per-tool setup instructions (codex, claude code, opencode, etc.)
