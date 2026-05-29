@@ -16,6 +16,7 @@
 
 **For TRAE IDE users, custom agent may be for your assistance:**
 [TRADE SOLO Discord Agent](https://github.com/roman-ryzenadvanced/discord-thread-manager.git)
+
 ---
 
 ## 🧠 How It Works
