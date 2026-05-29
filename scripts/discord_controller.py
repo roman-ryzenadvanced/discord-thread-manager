@@ -68,11 +68,18 @@ DISCORD_API_BASE = "https://discord.com/api/v10"
 DISCORD_EPOCH_MS = 1420070400000  # 2015-01-01T00:00:00Z in ms
 
 DISCORD_PATHS = [
+    "/snap/discord/current/usr/share/discord/Discord",  # snap (most common on Ubuntu)
     "/usr/share/discord/Discord",           # deb install
     "/opt/Discord/Discord",                  # tar install
-    "/snap/discord/current/usr/lib/discord/Discord",  # snap
     os.path.expanduser("~/.local/share/Discord/Discord"),  # user install
     "discord",                               # PATH fallback
+]
+
+# Snap data dirs where Discord stores config
+DISCORD_DATA_DIRS = [
+    os.path.expanduser("~/.config/discord"),
+    os.path.expanduser("~/snap/discord/current/.config/discord"),
+    os.path.expanduser("~/snap/discord/285/.config/discord"),
 ]
 
 
@@ -508,43 +515,97 @@ class DiscordController:
     def token(self) -> Optional[str]:
         return self._token
 
-    def launch(self, wait: float = 8.0) -> bool:
+    def launch(self, wait: float = 10.0) -> bool:
         """Launch Discord with remote debugging enabled.
 
-        Uses --remote-debugging-port to expose Chrome DevTools Protocol,
-        allowing us to inject JS and extract the session token.
+        Handles snap, deb, and manual installs:
+        - If Discord is already running with CDP, reuse it
+        - If snap Discord is running without CDP, kills it and relaunches the
+          binary directly with --remote-debugging-port
+        - Otherwise finds and launches the Discord binary with CDP
         """
         # Check if Discord is already running with CDP
         if self._check_cdp_available():
             log.info("Discord already running with CDP on port %d", self.cdp_port)
             return True
 
-        # Find Discord binary
-        discord_bin = None
-        for path in DISCORD_PATHS:
-            if os.path.isfile(path) or self._is_in_path(path):
-                discord_bin = path
-                break
+        # Kill any existing Discord instances (snap auto-restarts without CDP)
+        self._kill_existing_discord()
 
+        # Find Discord binary
+        discord_bin = self._find_discord_binary()
         if not discord_bin:
             log.error("Discord not found. Install Discord desktop for Linux.")
             log.error("Checked: %s", ", ".join(DISCORD_PATHS))
             return False
 
+        # Build launch args — snap Discord needs --no-sandbox
+        args = [discord_bin, f"--remote-debugging-port={self.cdp_port}"]
+        if "snap" in discord_bin:
+            args.extend(["--no-sandbox", "--disable-seccomp-filter-sandbox"])
+
+        # Disable the update nag that makes Discord auto-quit
+        self._set_skip_host_update()
+
         log.info("Launching Discord with CDP on port %d...", self.cdp_port)
+        log.info("Binary: %s", discord_bin)
         try:
             self._discord_process = subprocess.Popen(
-                [discord_bin, f"--remote-debugging-port={self.cdp_port}"],
+                args,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
-            log.info("Discord PID: %d. Waiting %.0fs for startup...", self._discord_process.pid, wait)
-            time.sleep(wait)
+            log.info("Discord PID: %d. Waiting %.0fs for startup...",
+                     self._discord_process.pid, wait)
+            # Wait and poll for CDP to come up
+            deadline = time.time() + wait
+            while time.time() < deadline:
+                time.sleep(1)
+                if self._check_cdp_available():
+                    log.info("CDP ready!")
+                    return True
             return self._check_cdp_available()
         except Exception as e:
             log.error("Failed to launch Discord: %s", e)
             return False
+
+    def _kill_existing_discord(self):
+        """Kill running Discord instances so we can restart with CDP."""
+        try:
+            subprocess.run(["pkill", "-f", "discord/Discord"],
+                          capture_output=True, timeout=5)
+            time.sleep(2)
+            # Make sure they're gone
+            subprocess.run(["pkill", "-9", "-f", "discord/Discord"],
+                          capture_output=True, timeout=5)
+            time.sleep(1)
+        except Exception:
+            pass
+
+    def _find_discord_binary(self) -> Optional[str]:
+        """Find the Discord binary on the system."""
+        for path in DISCORD_PATHS:
+            if os.path.isfile(path):
+                return path
+            if "/" not in path and self._is_in_path(path):
+                return path
+        return None
+
+    def _set_skip_host_update(self):
+        """Set SKIP_HOST_UPDATE in Discord's settings.json to prevent auto-quit."""
+        for data_dir in DISCORD_DATA_DIRS:
+            settings_path = os.path.join(data_dir, "settings.json")
+            if os.path.isfile(settings_path):
+                try:
+                    with open(settings_path, 'r') as f:
+                        settings = json.load(f)
+                    settings["SKIP_HOST_UPDATE"] = True
+                    with open(settings_path, 'w') as f:
+                        json.dump(settings, f, indent=2)
+                    log.info("Set SKIP_HOST_UPDATE in %s", settings_path)
+                except Exception:
+                    pass
 
     def _check_cdp_available(self) -> bool:
         """Check if the CDP endpoint is responding."""
