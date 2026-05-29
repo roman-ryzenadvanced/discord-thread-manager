@@ -6,7 +6,7 @@ Ubuntu desktop app for managing Discord threads without bot tokens.
 Uses CDP to extract your user token from the running Discord client,
 then scans, reports, categorizes, and manages threads via REST API.
 
-Requires: python3-gi, gir1.2-webkit2-4.1 (optional), requests, websocket-client
+Requires: python3-gi, gir1.2-gtk-3.0, requests, websocket-client
 Run: python3 discord-gui.py
 """
 
@@ -58,214 +58,33 @@ COLORS = {
 # CSS Provider
 # ---------------------------------------------------------------------------
 def load_css():
-    css = f"""
-    window {{
-        background-color: {COLORS['bg_dark']};
-    }}
-    .main-box {{
-        padding: 0;
-    }}
-    .header-bar {{
-        background: {COLORS['bg_panel']};
-        border-bottom: 1px solid {COLORS['border']};
-        padding: 12px 20px;
-    }}
-    .header-title {{
-        color: {COLORS['text']};
-        font-size: 20px;
-        font-weight: bold;
-    }}
-    .header-subtitle {{
-        color: {COLORS['text3']};
-        font-size: 11px;
-        font-family: monospace;
-    }}
-    .status-bar {{
-        background: {COLORS['bg_panel']};
-        border-top: 1px solid {COLORS['border']};
-        padding: 8px 20px;
-    }}
-    .status-label {{
-        color: {COLORS['text3']};
-        font-size: 11px;
-        font-family: monospace;
-    }}
-    .panel {{
-        background: {COLORS['bg_panel']};
-        border-right: 1px solid {COLORS['border']};
-    }}
-    .card {{
-        background: {COLORS['bg_card']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin: 4px 8px;
-    }}
-    .card:hover {{
-        background: {COLORS['bg_card_hover']};
-    }}
-    .card-selected {{
-        background: rgba(252,63,29,0.1);
-        border-color: {COLORS['accent']};
-    }}
-    .card-title {{
-        color: {COLORS['text']};
-        font-size: 13px;
-        font-weight: bold;
-    }}
-    .card-meta {{
-        color: {COLORS['text3']};
-        font-size: 10px;
-        font-family: monospace;
-    }}
-    .card-category {{
-        color: {COLORS['accent']};
-        font-size: 10px;
-        font-weight: bold;
-    }}
-    .accent-btn {{
-        background: {COLORS['accent']};
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 20px;
-        font-weight: bold;
-        font-size: 12px;
-    }}
-    .accent-btn:hover {{
-        background: {COLORS['accent_light']};
-    }}
-    .secondary-btn {{
-        background: {COLORS['bg_card']};
-        color: {COLORS['text2']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 6px;
-        padding: 8px 16px;
-        font-size: 12px;
-    }}
-    .secondary-btn:hover {{
-        color: {COLORS['text']};
-        border-color: rgba(255,255,255,0.15);
-    }}
-    .search-entry {{
-        background: {COLORS['bg_card']};
-        color: {COLORS['text']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12px;
-    }}
-    .search-entry:focus {{
-        border-color: {COLORS['accent']};
-    }}
-    .channel-label {{
-        color: {COLORS['text']};
-        font-size: 12px;
-        font-weight: bold;
-    }}
-    .stat-value {{
-        color: {COLORS['accent']};
-        font-size: 24px;
-        font-weight: bold;
-    }}
-    .stat-label {{
-        color: {COLORS['text3']};
-        font-size: 10px;
-    }}
-    .filter-btn {{
-        background: transparent;
-        color: {COLORS['text3']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 14px;
-        padding: 4px 12px;
-        font-size: 10px;
-    }}
-    .filter-btn:hover {{
-        color: {COLORS['text']};
-        border-color: rgba(255,255,255,0.15);
-    }}
-    .filter-btn.active {{
-        background: rgba(252,63,29,0.15);
-        color: {COLORS['accent']};
-        border-color: {COLORS['accent']};
-    }}
-    .tag {{
-        font-size: 9px;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-weight: bold;
-    }}
-    .thread-list {{
-        background: {COLORS['bg_dark']};
-    }}
-    .detail-panel {{
-        background: {COLORS['bg_panel']};
-        border-left: 1px solid {COLORS['border']};
-    }}
-    .detail-title {{
-        color: {COLORS['text']};
-        font-size: 16px;
-        font-weight: bold;
-    }}
-    .detail-label {{
-        color: {COLORS['text3']};
-        font-size: 10px;
-        font-family: monospace;
-    }}
-    .detail-value {{
-        color: {COLORS['text2']};
-        font-size: 12px;
-    }}
-    .badge-green {{
-        color: {COLORS['green']};
-        background: rgba(66,190,101,0.15);
-    }}
-    .badge-red {{
-        color: {COLORS['red']};
-        background: rgba(250,77,86,0.15);
-    }}
-    .badge-yellow {{
-        color: {COLORS['yellow']};
-        background: rgba(255,204,0,0.15);
-    }}
-    .badge-blue {{
-        color: {COLORS['blue']};
-        background: rgba(77,139,255,0.15);
-    }}
-    treeview {{
-        background: {COLORS['bg_dark']};
-        color: {COLORS['text2']};
-        border: none;
-    }}
-    treeview:selected {{
-        background: rgba(252,63,29,0.2);
-        color: {COLORS['text']};
-    }}
-    treeview header button {{
-        background: {COLORS['bg_panel']};
-        color: {COLORS['text3']};
-        border: none;
-        border-bottom: 1px solid {COLORS['border']};
-        padding: 6px;
-        font-size: 10px;
-        font-weight: bold;
-    }}
-    scrolledwindow {{
-        background: transparent;
-    }}
-    combobox {{
-        background: {COLORS['bg_card']};
-        color: {COLORS['text']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 6px;
-    }}
-    spinbutton {{
-        background: {COLORS['bg_card']};
-        color: {COLORS['text']};
-        border: 1px solid {COLORS['border']};
-        border-radius: 6px;
-        padding: 4px 8px;
-    }}
+    css = """
+    window { background-color: #1a1a2e; }
+    .header-bar { background: #16213e; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 12px 20px; }
+    .header-title { color: #f0f0f0; font-size: 20px; font-weight: bold; }
+    .header-subtitle { color: #6a6a7a; font-size: 11px; font-family: monospace; }
+    .status-bar { background: #16213e; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 20px; }
+    .status-label { color: #6a6a7a; font-size: 11px; font-family: monospace; }
+    .accent-btn { background: #FC3F1D; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: bold; font-size: 12px; }
+    .accent-btn:hover { background: #FF6B4A; }
+    .secondary-btn { background: #1f2b47; color: #a0a0b0; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px 16px; font-size: 12px; }
+    .secondary-btn:hover { color: #f0f0f0; border-color: rgba(255,255,255,0.15); }
+    .search-entry { background: #1f2b47; color: #f0f0f0; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px 12px; font-size: 12px; }
+    .search-entry:focus { border-color: #FC3F1D; }
+    .channel-label { color: #f0f0f0; font-size: 12px; font-weight: bold; }
+    .stat-value { color: #FC3F1D; font-size: 24px; font-weight: bold; }
+    .stat-label { color: #6a6a7a; font-size: 10px; }
+    .filter-btn { background: transparent; color: #6a6a7a; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 4px 12px; font-size: 10px; }
+    .filter-btn:hover { color: #f0f0f0; border-color: rgba(255,255,255,0.15); }
+    .filter-btn.active { background: rgba(252,63,29,0.15); color: #FC3F1D; border-color: #FC3F1D; }
+    .detail-title { color: #f0f0f0; font-size: 16px; font-weight: bold; }
+    .detail-label { color: #6a6a7a; font-size: 10px; font-family: monospace; }
+    .detail-value { color: #a0a0b0; font-size: 12px; }
+    treeview { background: #1a1a2e; color: #a0a0b0; border: none; }
+    treeview:selected { background: rgba(252,63,29,0.2); color: #f0f0f0; }
+    treeview header button { background: #16213e; color: #6a6a7a; border: none; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 6px; font-size: 10px; font-weight: bold; }
+    scrolledwindow { background: transparent; }
+    spinbutton { background: #1f2b47; color: #f0f0f0; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 4px 8px; }
     """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode())
@@ -287,9 +106,8 @@ class ThreadStore:
         self.active_filter = "All"
         self.search_query = ""
 
-    def load_scan(self, result: dict):
+    def load_scan(self, result):
         self.all_threads = result.get("stale_threads", []) + result.get("all_threads", [])
-        # Deduplicate
         seen = set()
         unique = []
         for t in self.all_threads:
@@ -310,15 +128,15 @@ class ThreadStore:
             threads = [t for t in threads if q in t.get("name", "").lower() or q in t.get("id", "")]
         self.filtered_threads = threads
 
-    def set_filter(self, category: str):
+    def set_filter(self, category):
         self.active_filter = category
         self.apply_filters()
 
-    def set_search(self, query: str):
+    def set_search(self, query):
         self.search_query = query
         self.apply_filters()
 
-    def get_stats(self) -> dict:
+    def get_stats(self):
         total = len(self.all_threads)
         archived = sum(1 for t in self.all_threads if t.get("is_archived"))
         locked = sum(1 for t in self.all_threads if t.get("is_locked"))
@@ -331,14 +149,13 @@ class ThreadStore:
 # ---------------------------------------------------------------------------
 class DiscordThreadManagerWindow(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Discord Thread Manager — The Hacky Way")
+        super().__init__(title="Discord Thread Manager")
         self.set_default_size(1100, 700)
         self.set_position(Gtk.WindowPosition.CENTER)
 
         self.controller = None
         self.store = ThreadStore()
-        self.scan_running = False
-        self.channels = []
+        self.detail_btn_thread_id = None
 
         load_css()
         self._build_ui()
@@ -350,34 +167,21 @@ class DiscordThreadManagerWindow(Gtk.Window):
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(main_box)
 
-        # Header
         self._build_header(main_box)
 
-        # Content area: toolbar + thread list + detail panel
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         main_box.pack_start(content, True, True, 0)
 
-        # Toolbar
         self._build_toolbar(content)
-
-        # Stats bar
         self._build_stats_bar(content)
-
-        # Filter bar
         self._build_filter_bar(content)
 
-        # Paned: thread list | detail panel
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(650)
         content.pack_start(paned, True, True, 0)
 
-        # Left: thread list
         self._build_thread_list(paned)
-
-        # Right: detail panel
         self._build_detail_panel(paned)
-
-        # Status bar
         self._build_status_bar(main_box)
 
     def _build_header(self, parent):
@@ -388,18 +192,17 @@ class DiscordThreadManagerWindow(Gtk.Window):
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         header.pack_start(title_box, True, True, 0)
 
-        lbl = Gtk.Label(label="🔓 Discord Thread Manager")
+        lbl = Gtk.Label(label="Discord Thread Manager")
         lbl.get_style_context().add_class("header-title")
         lbl.set_xalign(0)
         title_box.pack_start(lbl, False, False, 0)
 
-        self.status_subtitle = Gtk.Label(label="No token extracted — connect to Discord first")
+        self.status_subtitle = Gtk.Label(label="No token extracted -- connect to Discord first")
         self.status_subtitle.get_style_context().add_class("header-subtitle")
         self.status_subtitle.set_xalign(0)
         title_box.pack_start(self.status_subtitle, False, False, 0)
 
-        # Connect button
-        self.connect_btn = Gtk.Button(label="⚡ Connect")
+        self.connect_btn = Gtk.Button(label="Connect")
         self.connect_btn.get_style_context().add_class("accent-btn")
         header.pack_end(self.connect_btn, False, False, 0)
 
@@ -411,7 +214,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
         toolbar.set_margin_end(16)
         parent.pack_start(toolbar, False, False, 0)
 
-        # Channel input
         ch_label = Gtk.Label(label="Channel ID:")
         ch_label.get_style_context().add_class("channel-label")
         toolbar.pack_start(ch_label, False, False, 0)
@@ -422,7 +224,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
         self.channel_entry.set_placeholder_text("e.g. 1234567890123456")
         toolbar.pack_start(self.channel_entry, False, False, 0)
 
-        # Days spinner
         d_label = Gtk.Label(label="  Min days:")
         d_label.get_style_context().add_class("channel-label")
         toolbar.pack_start(d_label, False, False, 0)
@@ -433,31 +234,27 @@ class DiscordThreadManagerWindow(Gtk.Window):
         self.days_spinner.set_value(30)
         toolbar.pack_start(self.days_spinner, False, False, 0)
 
-        # Scan button
-        self.scan_btn = Gtk.Button(label="🔍 Scan Threads")
+        self.scan_btn = Gtk.Button(label="Scan Threads")
         self.scan_btn.get_style_context().add_class("accent-btn")
         toolbar.pack_start(self.scan_btn, False, False, 4)
 
-        # Separator
-        toolbar.pack_start(Gtk.Separator(Gtk.Orientation.VERTICAL), False, False, 8)
+        sep = Gtk.Separator()
+        toolbar.pack_start(sep, False, False, 8)
 
-        # Report button
-        self.report_btn = Gtk.Button(label="📊 Report")
+        self.report_btn = Gtk.Button(label="Report")
         self.report_btn.get_style_context().add_class("secondary-btn")
         self.report_btn.set_sensitive(False)
         toolbar.pack_start(self.report_btn, False, False, 4)
 
-        # Lock & Archive
-        self.archive_btn = Gtk.Button(label="🔒 Lock & Archive")
+        self.archive_btn = Gtk.Button(label="Lock & Archive")
         self.archive_btn.get_style_context().add_class("secondary-btn")
         self.archive_btn.set_sensitive(False)
         toolbar.pack_start(self.archive_btn, False, False, 4)
 
-        # Search
         self.search_entry = Gtk.Entry()
         self.search_entry.get_style_context().add_class("search-entry")
         self.search_entry.set_width_chars(25)
-        self.search_entry.set_placeholder_text("🔍 Search threads...")
+        self.search_entry.set_placeholder_text("Search threads...")
         toolbar.pack_end(self.search_entry, False, False, 0)
 
     def _build_stats_bar(self, parent):
@@ -470,7 +267,7 @@ class DiscordThreadManagerWindow(Gtk.Window):
 
         self.stat_labels = {}
         for key, label_text in [("total", "Total"), ("stale", "Stale 30d+"),
-                                  ("archived", "Archived"), ("locked", "Locked")]:
+                                ("archived", "Archived"), ("locked", "Locked")]:
             box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
             val = Gtk.Label(label="0")
             val.get_style_context().add_class("stat-value")
@@ -504,12 +301,10 @@ class DiscordThreadManagerWindow(Gtk.Window):
         scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         parent.pack1(scrolled, True, True)
 
-        # ListStore: id, name, category, days_inactive, archived, locked, message_count
         self.liststore = Gtk.ListStore(str, str, str, int, bool, bool, int)
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_activate_on_single_click(True)
 
-        # Columns
         for i, (title, col_type) in enumerate([
             ("Thread", 0), ("Category", 2), ("Days Inactive", 3),
             ("Messages", 6), ("Archived", 4), ("Locked", 5)
@@ -551,53 +346,45 @@ class DiscordThreadManagerWindow(Gtk.Window):
 
         self.detail_fields = {}
         for i, (key, label) in enumerate([
-            ("id", "Thread ID"),
-            ("category", "Category"),
-            ("days_inactive", "Days Inactive"),
-            ("message_count", "Messages"),
-            ("is_archived", "Archived"),
-            ("is_locked", "Locked"),
-            ("source", "Source"),
-            ("parent_id", "Parent Channel"),
-            ("owner_id", "Owner ID"),
-            ("last_activity", "Last Activity"),
+            ("id", "Thread ID"), ("category", "Category"),
+            ("days_inactive", "Days Inactive"), ("message_count", "Messages"),
+            ("is_archived", "Archived"), ("is_locked", "Locked"),
+            ("source", "Source"), ("parent_id", "Parent Channel"),
+            ("owner_id", "Owner ID"), ("last_activity", "Last Activity"),
         ]):
             lbl = Gtk.Label(label=label + ":")
             lbl.get_style_context().add_class("detail-label")
             lbl.set_xalign(0)
             self.detail_grid.attach(lbl, 0, i, 1, 1)
 
-            val = Gtk.Label(label="—")
+            val = Gtk.Label(label="--")
             val.get_style_context().add_class("detail-value")
             val.set_xalign(0)
             val.set_selectable(True)
             self.detail_grid.attach(val, 1, i, 1, 1)
             self.detail_fields[key] = val
 
-        # Action buttons for selected thread
         btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         btn_box.set_margin_top(12)
         self.detail_box.pack_start(btn_box, False, False, 0)
 
-        self.detail_lock_btn = Gtk.Button(label="🔒 Lock")
+        self.detail_lock_btn = Gtk.Button(label="Lock")
         self.detail_lock_btn.get_style_context().add_class("secondary-btn")
         self.detail_lock_btn.set_sensitive(False)
         btn_box.pack_start(self.detail_lock_btn, False, False, 0)
 
-        self.detail_archive_btn = Gtk.Button(label="📦 Archive")
+        self.detail_archive_btn = Gtk.Button(label="Archive")
         self.detail_archive_btn.get_style_context().add_class("secondary-btn")
         self.detail_archive_btn.set_sensitive(False)
         btn_box.pack_start(self.detail_archive_btn, False, False, 0)
 
-        self.detail_both_btn = Gtk.Button(label="🔒📦 Lock & Archive")
+        self.detail_both_btn = Gtk.Button(label="Lock & Archive")
         self.detail_both_btn.get_style_context().add_class("accent-btn")
         self.detail_both_btn.set_sensitive(False)
         btn_box.pack_start(self.detail_both_btn, False, False, 0)
 
-        # Spacer
         self.detail_box.pack_start(Gtk.Label(), True, True, 0)
 
-        # Report preview
         self.report_view = Gtk.TextView()
         self.report_view.set_editable(False)
         self.report_view.get_style_context().add_class("search-entry")
@@ -634,9 +421,9 @@ class DiscordThreadManagerWindow(Gtk.Window):
         self.detail_archive_btn.connect("clicked", self._on_detail_archive)
         self.detail_both_btn.connect("clicked", self._on_detail_both)
 
-    # ---- ACTIONS (run in threads) ----
+    # ---- ACTIONS ----
 
-    def _set_status(self, msg: str):
+    def _set_status(self, msg):
         GLib.idle_add(self.status_label.set_text, msg)
 
     def _on_connect(self, btn):
@@ -653,24 +440,21 @@ class DiscordThreadManagerWindow(Gtk.Window):
             if not self.controller.full_startup():
                 GLib.idle_add(self._on_connect_fail, "Failed to connect. Is Discord running?")
                 return
-
             user = self.controller.api.user_info
             username = f"{user.get('username', '?')}#{user.get('discriminator', '?')}" if user else "?"
-
-            # Fetch guilds/channels for convenience
             GLib.idle_add(self._on_connect_success, username)
         except Exception as e:
             GLib.idle_add(self._on_connect_fail, str(e))
 
     def _on_connect_success(self, username):
-        self.connect_btn.set_label(f"✓ {username}")
+        self.connect_btn.set_label(f"Connected: {username}")
         self.connect_btn.set_sensitive(False)
-        self.status_subtitle.set_text(f"Authenticated as {username} — token extracted via CDP")
+        self.status_subtitle.set_text(f"Authenticated as {username} -- token extracted via CDP")
         self._set_status(f"Connected as {username}")
 
     def _on_connect_fail(self, msg):
         self.connect_btn.set_sensitive(True)
-        self.connect_btn.set_label("⚡ Connect")
+        self.connect_btn.set_label("Connect")
         self._set_status(f"Connection failed: {msg}")
 
     def _on_scan(self, btn):
@@ -709,7 +493,7 @@ class DiscordThreadManagerWindow(Gtk.Window):
         self._set_status(
             f"Scan complete: {meta.get('total_threads_scanned', 0)} threads, "
             f"{meta.get('total_stale', 0)} stale")
-        GLib.timeout_add(2000, lambda: self.progress.set_fraction(0) and False)
+        GLib.timeout_add(2000, lambda: (self.progress.set_fraction(0), False)[1])
 
     def _on_scan_fail(self, msg):
         self.scan_btn.set_sensitive(True)
@@ -725,7 +509,7 @@ class DiscordThreadManagerWindow(Gtk.Window):
     def _do_report(self):
         import tempfile
         report_path = os.path.join(tempfile.gettempdir(), "discord_thread_report.md")
-        lines = [f"# Thread Report — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n"]
+        lines = [f"# Thread Report -- {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n"]
         stats = self.store.get_stats()
         lines.append(f"Total: {stats['total']} | Stale: {stats['stale']} | Archived: {stats['archived']} | Locked: {stats['locked']}\n")
 
@@ -741,15 +525,16 @@ class DiscordThreadManagerWindow(Gtk.Window):
         lines.append("\n## Thread Details")
         for t in sorted(self.store.all_threads, key=lambda x: -x.get("days_inactive", 0)):
             status = []
-            if t.get("is_archived"): status.append("archived")
-            if t.get("is_locked"): status.append("locked")
+            if t.get("is_archived"):
+                status.append("archived")
+            if t.get("is_locked"):
+                status.append("locked")
             status_str = f" [{', '.join(status)}]" if status else ""
-            lines.append(f"- **{t.get('name', 'Untitled')}** — {t.get('days_inactive', '?')}d inactive, {t.get('message_count', 0)} msgs, {t.get('category', '?')}{status_str}")
+            lines.append(f"- **{t.get('name', 'Untitled')}** -- {t.get('days_inactive', '?')}d inactive, {t.get('message_count', 0)} msgs, {t.get('category', '?')}{status_str}")
 
         report = "\n".join(lines)
         with open(report_path, 'w') as f:
             f.write(report)
-
         GLib.idle_add(self._show_report, report, report_path)
 
     def _show_report(self, report, path):
@@ -761,19 +546,17 @@ class DiscordThreadManagerWindow(Gtk.Window):
     def _on_bulk_archive(self, btn):
         if not self.controller or not self.store.filtered_threads:
             return
-        # Confirm dialog
         dialog = Gtk.MessageDialog(
             parent=self, flags=0,
             message_type=Gtk.MessageType.WARNING,
             buttons=Gtk.ButtonsType.YES_NO,
             text=f"Lock & archive {len(self.store.filtered_threads)} threads?")
-        dialog.format_secondary_text("This will lock and archive all filtered threads. Dry run first?")
+        dialog.format_secondary_text("This will lock and archive all filtered threads.")
         response = dialog.run()
         dialog.destroy()
         if response != Gtk.ResponseType.YES:
             return
 
-        # Ask dry-run vs live
         dialog2 = Gtk.MessageDialog(
             parent=self, flags=0,
             message_type=Gtk.MessageType.QUESTION,
@@ -801,8 +584,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
         locked = len(result.get("locked", []))
         failed = len(result.get("failed", []))
         self._set_status(f"{mode} complete: {locked} processed, {failed} failed")
-        if not dry_run:
-            self._set_status(f"{mode}: {locked} locked/archived. Re-scan to refresh.")
 
     def _on_search(self, entry):
         self.store.set_search(entry.get_text())
@@ -811,7 +592,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
     def _on_thread_selected(self, treeview, path, column):
         tree_iter = self.liststore.get_iter(path)
         thread_id = self.liststore.get_value(tree_iter, 0)
-        # Find thread in store
         for t in self.store.all_threads:
             if t["id"] == thread_id:
                 self._show_detail(t)
@@ -819,37 +599,37 @@ class DiscordThreadManagerWindow(Gtk.Window):
 
     def _show_detail(self, thread):
         self.detail_title.set_text(thread.get("name", "Untitled"))
-        self.detail_fields["id"].set_text(thread.get("id", "—"))
-        self.detail_fields["category"].set_text(thread.get("category", "—"))
-        self.detail_fields["days_inactive"].set_text(str(thread.get("days_inactive", "—")))
+        self.detail_fields["id"].set_text(thread.get("id", "--"))
+        self.detail_fields["category"].set_text(thread.get("category", "--"))
+        self.detail_fields["days_inactive"].set_text(str(thread.get("days_inactive", "--")))
         self.detail_fields["message_count"].set_text(str(thread.get("message_count", 0)))
-        self.detail_fields["is_archived"].set_text("✓ Yes" if thread.get("is_archived") else "✗ No")
-        self.detail_fields["is_locked"].set_text("✓ Yes" if thread.get("is_locked") else "✗ No")
-        self.detail_fields["source"].set_text(thread.get("source", "—"))
-        self.detail_fields["parent_id"].set_text(thread.get("parent_id", "—"))
-        self.detail_fields["owner_id"].set_text(thread.get("owner_id", "—"))
+        self.detail_fields["is_archived"].set_text("Yes" if thread.get("is_archived") else "No")
+        self.detail_fields["is_locked"].set_text("Yes" if thread.get("is_locked") else "No")
+        self.detail_fields["source"].set_text(thread.get("source", "--"))
+        self.detail_fields["parent_id"].set_text(thread.get("parent_id", "--"))
+        self.detail_fields["owner_id"].set_text(thread.get("owner_id", "--"))
         self.detail_fields["last_activity"].set_text(
-            thread.get("last_activity", "—")[:19].replace("T", " "))
+            thread.get("last_activity", "--")[:19].replace("T", " "))
         self.detail_lock_btn.set_sensitive(True)
         self.detail_archive_btn.set_sensitive(True)
         self.detail_both_btn.set_sensitive(True)
         self.detail_btn_thread_id = thread["id"]
 
     def _on_detail_lock(self, btn):
-        if hasattr(self, 'detail_btn_thread_id') and self.controller:
+        if self.detail_btn_thread_id and self.controller:
             ok = self.controller.api.lock_thread(self.detail_btn_thread_id)
-            self._set_status(f"Lock {'✓' if ok else '✗'}: {self.detail_btn_thread_id}")
+            self._set_status(f"Lock {'OK' if ok else 'FAIL'}: {self.detail_btn_thread_id}")
 
     def _on_detail_archive(self, btn):
-        if hasattr(self, 'detail_btn_thread_id') and self.controller:
+        if self.detail_btn_thread_id and self.controller:
             ok = self.controller.api.archive_thread(self.detail_btn_thread_id)
-            self._set_status(f"Archive {'✓' if ok else '✗'}: {self.detail_btn_thread_id}")
+            self._set_status(f"Archive {'OK' if ok else 'FAIL'}: {self.detail_btn_thread_id}")
 
     def _on_detail_both(self, btn):
-        if hasattr(self, 'detail_btn_thread_id') and self.controller:
+        if self.detail_btn_thread_id and self.controller:
             tid = self.detail_btn_thread_id
             lock_ok, archive_ok = self.controller.api.lock_and_archive(tid)
-            self._set_status(f"Lock {'✓' if lock_ok else '✗'} | Archive {'✓' if archive_ok else '✗'}: {tid}")
+            self._set_status(f"Lock {'OK' if lock_ok else 'FAIL'} | Archive {'OK' if archive_ok else 'FAIL'}: {tid}")
 
     # ---- REFRESH UI ----
 
@@ -872,7 +652,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
             label.set_text(str(stats.get(key, 0)))
 
     def _refresh_filters(self):
-        # Remove old filter buttons (keep label + "All")
         for btn in list(self.filter_buttons.values()):
             if btn.get_parent():
                 self.filter_box.remove(btn)
@@ -900,7 +679,6 @@ class DiscordThreadManagerWindow(Gtk.Window):
     def _on_filter_click(self, btn, category):
         self.store.set_filter(category)
         self._refresh_list()
-        # Update active state
         for b in self.filter_buttons.values():
             if b.get_style_context().has_class("active"):
                 b.get_style_context().remove_class("active")
