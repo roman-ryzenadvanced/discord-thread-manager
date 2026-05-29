@@ -221,3 +221,39 @@ exclusively through our launcher.
 ## License
 
 MIT — Hack responsibly.
+
+## 🖥️ GTK Desktop GUI (Ubuntu)
+
+A full desktop application for managing Discord threads without bot tokens.
+
+![GTK GUI](https://img.shields.io/badge/GTK-3.0-blue?style=flat-square) ![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04+-FCC624?style=flat-square&logo=ubuntu&logoColor=black)
+
+### Install
+
+```bash
+cd gui/
+./install.sh
+```
+
+### Run
+
+```bash
+python3 gui/discord-gui.py
+```
+
+### Features
+
+- **⚡ One-click connect** — Extracts token from running Discord via CDP
+- **🔍 Thread scanner** — Scan any channel for active + archived threads
+- **📊 Reports** — Generate markdown reports with categories & stats
+- **🏷️ Categories** — Auto-categorize threads by issue type
+- **🔎 Search & filter** — Filter by category, search by name/ID
+- **🔒 Bulk actions** — Lock, archive, or both with dry-run safety
+- **📋 Detail panel** — Full thread details with individual actions
+- **📈 Stats dashboard** — Total, stale, archived, locked counts
+
+### System Requirements
+
+- Ubuntu 22.04+ (or any Linux with GTK 3)
+- `python3-gi`, `gir1.2-gtk-3.0`
+- Discord desktop app installed

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Discord Thread Manager
+Comment=Manage Discord threads without bot tokens (The Hacky Way)
+Exec=python3 /opt/discord-thread-manager/gui/discord-gui.py
+Icon=discord
+Terminal=false
+Type=Application
+Categories=Network;Utility;
+Keywords=discord;threads;manager;
