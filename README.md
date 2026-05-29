@@ -8,6 +8,11 @@
 [![z.ai 10% OFF](https://img.shields.io/badge/z.ai-Coding%20Plan%2010%25%20OFF-6366f1?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHRleHQgeD0iNCIgeT0iMTgiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IndoaXRlIj56PC90ZXh0Pjwvc3ZnPg==)](https://rommark.dev/codex-launcher/)
 [![Free API](https://img.shields.io/badge/Xiaomi%20Mimo%202.5%20Pro-FREE%20API-orange?style=for-the-badge)](https://rommark.dev/codex-launcher/)
 
+# For TRAE IDE users, custom agent may be for your assistance:
+https://github.com/roman-ryzenadvanced/discord-thread-manager.git
+[![TRADE SOLO Discord Agent](https://github.com/roman-ryzenadvanced/discord-thread-manager.git)
+
+
 > **No bot token. No Discord developer portal. No OAuth setup. No friction.**
 >
 > Launches Discord with Chrome DevTools Protocol (CDP), extracts your user token
